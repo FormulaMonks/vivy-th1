@@ -1,1 +1,1 @@
-# vivy-prod
+# Vivy: Conversational AI Assistant
