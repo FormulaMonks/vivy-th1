@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <title>Vivy</title>
+</head>
+
+<body>
+    <div class="box">
+        <div class="visualizer"></div>
+    </div>
+    <div class="play">
+        <div class="btn btn-play"></div>
+    </div>
+    <script>
+        const btn = document.querySelector('.btn');
+        const visualizer = document.querySelector('.visualizer');
+
+        let audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 64;
+        const bufferLength = analyser.frequencyBinCount;
+        let dataArray = new Uint8Array(bufferLength);
+        let microphone = null;
+        let micStream = null;
+        let isListening = false;
+
+        let elements = [];
+        for (let i = 0; i < bufferLength; i++) {
+            const element = document.createElement('span');
+            element.classList.add('element');
+            elements.push(element);
+            visualizer.appendChild(element);
+        }
+
+        const clamp = (num, min, max) => {
+            if (num >= max) return max;
+            if (num <= min) return min;
+            return num;
+        }
+
+        const update = () => {
+            requestAnimationFrame(update);
+            analyser.getByteFrequencyData(dataArray);
+            for (let i = 0; i < bufferLength; i++) {
+                let item = dataArray[i];
+                item = item > 150 ? item / 1.5 : item * 1.5;
+                elements[i].style.transform = `rotateZ(${i * (360 / bufferLength)}deg) translate(-50%, ${clamp(item, 100, 150)}px)`;
+            }
+        };
+
+        btn.addEventListener('click', e => {
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+
+            if (isListening) {
+                // Stop listening to the microphone
+                microphone.disconnect(analyser);
+                micStream.getTracks().forEach(track => track.stop());
+                isListening = false;
+            } else {
+                // Start listening to the microphone
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(stream => {
+                        micStream = stream;
+                        microphone = audioContext.createMediaStreamSource(stream);
+                        microphone.connect(analyser);
+                        isListening = true;
+                    })
+                    .catch(err => console.error('Error accessing the microphone: ' + err));
+            }
+
+            btn.classList.toggle('btn-play');
+            btn.classList.toggle('btn-pause');
+        });
+
+        update();
+
+    </script>
+</body>
+
+</html>
